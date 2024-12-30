@@ -4,7 +4,7 @@ import api from '../api/axiosConfig';
 export const login = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
   try {
     const response = await api.post('/user/login', credentials);
-    localStorage.setItem('isLoggedIn', 'true');
+    localStorage.setItem('token', response.data.token);
     return response.data;
   } catch (error) {
     return rejectWithValue(error.response.data);
@@ -12,18 +12,18 @@ export const login = createAsyncThunk('auth/login', async (credentials, { reject
 });
 
 export const logout = createAsyncThunk('auth/logout', async () => {
+  localStorage.removeItem('token');
   const response = await api.post('/user/logout');
-  localStorage.removeItem('isLoggedIn');
   return response.data;
 });
 
 export const checkAuthStatus = createAsyncThunk('auth/checkStatus', async () => {
-  try {
-    const response = await api.get('/user/check-auth');
-    return response.data;
-  } catch (error) {
-    throw error;
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('No token found');
   }
+  const response = await api.get('/user/check-auth');
+  return response.data;
 });
 
 const authSlice = createSlice({
@@ -39,7 +39,7 @@ const authSlice = createSlice({
       .addCase(login.pending, (state) => {
         state.status = 'loading';
       })
-      .addCase(login.fulfilled, (state) => {
+      .addCase(login.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.user = { isLoggedIn: true };
         state.error = null;
